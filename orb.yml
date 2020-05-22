@@ -1,0 +1,56 @@
+version: 2.1
+description: >
+  An orb to send a Slack notification showing projects that haven't been deployed to in a specified time.
+  Note that this currently assumes that your deploy workflow is called "deploy",
+  your deploy branch is "master" and you are using GitHub VCS.
+
+commands:
+  stale-projects-slack-notify:
+    description: Send a notification to Slack detailing projects that haven't been deployed in a specified time
+    parameters:
+      circleci-token:
+        type: string
+        description: The CircleCI API token
+      circleci-org:
+        type: string
+        description: The CircleCI team/organisation name
+      slack-webhook:
+        type: string
+        description: The Slack webhook to post the message to
+      secs-warn:
+        type: integer
+        description: |
+          The seconds allowed since last deploy (i.e. if the deploy was longer than this amount of seconds ago, add project to Slack message)
+        default: 172800 # 2 days
+    steps:
+      - run:
+          name: Send Slack notification containing projects with stale deploys
+          command: |
+            slack_json='{
+                "text": ":white_check_mark: All projects have been deployed recently - keep it up! :sunglasses:",
+                "blocks": ['
+
+            while IFS=$'\t' read -r project date status ; do
+              if [ -z "$date" ] ; then
+                continue
+              fi
+              (( secs_since_deploy=$(gdate +%s)-$(gdate -d "$date" +"%s") ))
+              if [[ $secs_since_deploy -lt << parameters.secs-warn >> && "$status" != "failed" ]] ; then
+                continue
+              fi
+              project_string=$(printf ':warning: Project: *%s* \nLast successful deploy: *%dd:%dh:%dm:%ds ago*\n Trigger a deploy <https://app.circleci.com/pipelines/github/%s/%s?branch=master|here!> :shipit::ship: \n\n' \
+              "$project" $((secs_since_deploy/86400)) $((secs_since_deploy%86400/3600)) $((secs_since_deploy%3600/60)) $((secs_since_deploy%60)) "<< parameters.circleci-org >>" "$project")
+              slack_json+="
+                    {
+                        \"type\": \"section\",
+                        \"text\": {
+                            \"type\": \"mrkdwn\",
+                            \"text\": \"$project_string \n \"
+                        }
+                    },"
+            done < <(curl https://circleci.com/api/v1.1/projects?circle-token="<< parameters.circleci-token >>" | jq -r '.[] | [.reponame, .branches.master.latest_completed_workflows.deploy.created_at, .branches.master.latest_completed_workflows.deploy.status] | @tsv')
+            slack_json+=']
+            }'
+
+            payload=$(echo "$slack_json" | sed 's/,\]/\]/')
+            curl -X POST -H 'Content-type: application/json' --data "$payload" "<< parameters.slack-webhook >>"
