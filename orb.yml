@@ -26,15 +26,15 @@ commands:
       - run:
           name: Send Slack notification containing projects with stale deploys
           command: |
-            slack_json='{
-                "text": ":white_check_mark: All projects have been deployed recently - keep it up! :sunglasses:",
-                "blocks": ['
+            slack_json="{
+                \"text\": \":white_check_mark: All projects have been deployed within the last $((<< parameters.secs-warn >>/86400)) days - keep it up! :sunglasses:\",
+                \"blocks\": ["
 
             while IFS=$'\t' read -r project date status ; do
               if [ -z "$date" ] ; then
                 continue
               fi
-              (( secs_since_deploy=$(gdate +%s)-$(gdate -d "$date" +"%s") ))
+              (( secs_since_deploy=$(date +%s)-$(date -d "$date" +"%s") ))
               if [[ $secs_since_deploy -lt << parameters.secs-warn >> && "$status" != "failed" ]] ; then
                 continue
               fi
