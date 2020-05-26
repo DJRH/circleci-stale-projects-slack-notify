@@ -38,8 +38,8 @@ commands:
               if [[ $secs_since_deploy -lt << parameters.secs-warn >> && "$status" != "failed" ]] ; then
                 continue
               fi
-              project_string=$(printf ':warning: Project: *%s* \nLast successful deploy: *%dd:%dh:%dm:%ds ago*\n Trigger a deploy <https://app.circleci.com/pipelines/github/%s/%s?branch=master|here!> :shipit::ship: \n\n' \
-              "$project" $((secs_since_deploy/86400)) $((secs_since_deploy%86400/3600)) $((secs_since_deploy%3600/60)) $((secs_since_deploy%60)) "<< parameters.circleci-org >>" "$project")
+              project_string=$(printf ':warning: Project: *%s* \nLast deploy (%s): *%dd:%dh:%dm:%ds ago*\n Trigger a deploy <https://app.circleci.com/pipelines/github/%s/%s?branch=master|here!> :shipit::ship: \n\n' \
+              "$project" "$status" $((secs_since_deploy/86400)) $((secs_since_deploy%86400/3600)) $((secs_since_deploy%3600/60)) $((secs_since_deploy%60)) "<< parameters.circleci-org >>" "$project")
               slack_json+="
                     {
                         \"type\": \"section\",
