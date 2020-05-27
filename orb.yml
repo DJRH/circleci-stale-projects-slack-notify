@@ -30,12 +30,12 @@ commands:
                 \"text\": \":white_check_mark: All projects have been deployed within the last $((<< parameters.secs-warn >>/86400)) days - keep it up! :sunglasses:\",
                 \"blocks\": ["
 
-            while IFS=$'\t' read -r project date status ; do
+            while IFS=$'\t' read -r project date status completed_id latest_id ; do
               if [ -z "$date" ] ; then
                 continue
               fi
               (( secs_since_deploy=$(date +%s)-$(date -d "$date" +"%s") ))
-              if [[ $secs_since_deploy -lt << parameters.secs-warn >> && "$status" != "failed" ]] ; then
+              if [[ "$completed_id" == "$latest_id" || ($secs_since_deploy -lt << parameters.secs-warn >> && "$status" != "failed") ]] ; then
                 continue
               fi
               project_string=$(printf ':warning: Project: *%s* \nLast deploy (%s): *%dd:%dh:%dm:%ds ago*\n Trigger a deploy <https://app.circleci.com/pipelines/github/%s/%s?branch=master|here!> :shipit::ship: \n\n' \
@@ -48,7 +48,7 @@ commands:
                             \"text\": \"$project_string \n \"
                         }
                     },"
-            done < <(curl https://circleci.com/api/v1.1/projects?circle-token="<< parameters.circleci-token >>" | jq -r '.[] | [.reponame, .branches.master.latest_completed_workflows.deploy.created_at, .branches.master.latest_completed_workflows.deploy.status] | @tsv')
+            done < <(curl https://circleci.com/api/v1.1/projects?circle-token="<< parameters.circleci-token >>" | jq -r '.[] | [.reponame, .branches.master.latest_completed_workflows.deploy.created_at, .branches.master.latest_completed_workflows.deploy.status, .branches.master.latest_completed_workflows.deploy.id, .branches.master.latest_workflows.deploy.id] | @tsv')
             slack_json+=']
             }'
 
