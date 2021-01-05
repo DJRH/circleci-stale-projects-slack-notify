@@ -39,7 +39,7 @@ commands:
                 continue
               fi
               started_by_id=$(curl --request GET --url "https://circleci.com/api/v2/workflow/$latest_id" --header "Circle-Token: << parameters.circleci-token >>" | jq -r '.started_by')
-              started_by_name=$(curl --request GET --url "https://circleci.com/api/v2/user/$started_by_id" --header "Circle-Token: << parameters.circleci-token >>" | jq -r '.name')
+              started_by_name=$(curl --request GET --url "https://circleci.com/api/v2/user/$started_by_id" --header "Circle-Token: << parameters.circleci-token >>" | jq -r '.login')
               project_string=$(printf ':warning: Project: *%s* \nLast deploy (%s): *%dd:%dh:%dm:%ds ago*\n Culprit: *%s* :face_with_monocle: \n Trigger a deploy <https://app.circleci.com/pipelines/github/%s/%s?branch=master|here!> :shipit::ship: \n\n' \
               "$project" "$status" $((secs_since_deploy/86400)) $((secs_since_deploy%86400/3600)) $((secs_since_deploy%3600/60)) $((secs_since_deploy%60)) "$started_by_name" "<< parameters.circleci-org >>" "$project")
               slack_json+="
