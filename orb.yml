@@ -29,6 +29,7 @@ commands:
             slack_json="{
                 \"text\": \":white_check_mark: All projects have been deployed within the last $((<< parameters.secs-warn >>/86400)) days - keep it up! :sunglasses:\",
                 \"blocks\": ["
+            send_message=false
 
             while IFS=$'\t' read -r project date status completed_id latest_id ; do
               if [ -z "$date" ] ; then
@@ -50,9 +51,11 @@ commands:
                             \"text\": \"$project_string \n \"
                         }
                     },"
+              send_message=true
             done < <(curl https://circleci.com/api/v1.1/projects?circle-token="<< parameters.circleci-token >>" | jq -r '.[] | [.reponame, .branches.master.latest_completed_workflows.deploy.created_at, .branches.master.latest_completed_workflows.deploy.status, .branches.master.latest_completed_workflows.deploy.id, .branches.master.latest_workflows.deploy.id] | @tsv')
             slack_json+=']
             }'
-
-            payload=$(echo "$slack_json" | sed 's/,\]/\]/')
-            curl -X POST -H 'Content-type: application/json' --data "$payload" "<< parameters.slack-webhook >>"
+            if $send_message ; then
+              payload=$(echo "$slack_json" | sed 's/,\]/\]/')
+              curl -X POST -H 'Content-type: application/json' --data "$payload" "<< parameters.slack-webhook >>"
+            fi
